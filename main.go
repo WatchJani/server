@@ -10,10 +10,13 @@ import (
 	"time"
 )
 
+const Schema string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~"
+
 type Server struct {
 	addr   string
 	ls     net.Listener
 	schema []byte
+	cmd    map[string]func(net.Conn)
 }
 
 func New(addr string) (*Server, error) {
@@ -27,8 +30,15 @@ func New(addr string) (*Server, error) {
 	return &Server{
 		ls:     ls,
 		addr:   addr,
-		schema: []byte("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~"),
+		schema: []byte(Schema),
+		cmd: map[string]func(net.Conn){
+			"close": CloseClient,
+		},
 	}, nil
+}
+
+func CloseClient(conn net.Conn) {
+	conn.Close()
 }
 
 func (s *Server) Listen() {
@@ -52,8 +62,15 @@ func (s *Server) ReadLoop(conn net.Conn) {
 			conn.Close()
 			break
 		}
+		cmd := string(reader[:n-2])
 
-		size, err := strconv.Atoi(string(reader[:n-2]))
+		if fn, ok := s.cmd[cmd]; ok {
+			fn(conn)
+			fmt.Println(time.Now(), "| user leave")
+			continue
+		}
+
+		size, err := strconv.Atoi(cmd)
 		if err != nil || size < 0 {
 			fmt.Println("Error:", err)
 			conn.Write([]byte("wrong input\n"))
