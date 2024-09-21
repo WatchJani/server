@@ -32,6 +32,8 @@ func New(addr string) (*Server, error) {
 		addr:   addr,
 		schema: []byte(Schema),
 		cmd: map[string]func(net.Conn){
+			"quit":  CloseClient,
+			"exit":  CloseClient,
 			"close": CloseClient,
 		},
 	}, nil
