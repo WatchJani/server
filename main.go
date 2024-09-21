@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
+	"strconv"
 )
 
 type Server struct {
-	addr string
-	ls   net.Listener
+	addr   string
+	ls     net.Listener
+	schema []byte
 }
 
 func New(addr string) (*Server, error) {
@@ -20,8 +23,9 @@ func New(addr string) (*Server, error) {
 	fmt.Println(ls.Addr())
 
 	return &Server{
-		ls:   ls,
-		addr: addr,
+		ls:     ls,
+		addr:   addr,
+		schema: []byte("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~"),
 	}, nil
 }
 
@@ -46,8 +50,27 @@ func (s *Server) ReadLoop(conn net.Conn) {
 			continue
 		}
 
-		fmt.Println(string(reader[:n]))
+		size, err := strconv.Atoi(string(reader[:n-2]))
+		if err != nil {
+			fmt.Println("Error:", err)
+			conn.Write([]byte("wrong input\n"))
+			return
+		}
+
+		conn.Write(s.Random(size))
 	}
+}
+
+func (s *Server) Random(size int) []byte {
+	message := make([]byte, size+1)
+
+	for index := 0; index < len(message); index++ {
+		message[index] = s.schema[rand.Intn(len(s.schema))]
+	}
+
+	message[len(message)-1] = '\n'
+
+	return message
 }
 
 func (s *Server) Close() {
@@ -55,7 +78,7 @@ func (s *Server) Close() {
 }
 
 func main() {
-	addr := "109.165.187.47:5000"
+	addr := ":5000"
 
 	server, err := New(addr)
 	if err != nil {
