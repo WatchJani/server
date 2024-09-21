@@ -5,7 +5,9 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
+	"time"
 )
 
 type Server struct {
@@ -47,15 +49,18 @@ func (s *Server) ReadLoop(conn net.Conn) {
 		n, err := conn.Read(reader)
 		if err != nil {
 			log.Println(err)
-			continue
+			conn.Close()
+			break
 		}
 
 		size, err := strconv.Atoi(string(reader[:n-2]))
-		if err != nil {
+		if err != nil || size < 0 {
 			fmt.Println("Error:", err)
 			conn.Write([]byte("wrong input\n"))
-			return
+			continue
 		}
+
+		log.Printf("%v | %v | %d\n", time.Now(), conn.RemoteAddr(), size)
 
 		conn.Write(s.Random(size))
 	}
@@ -78,6 +83,13 @@ func (s *Server) Close() {
 }
 
 func main() {
+	logFile, err := os.OpenFile("application.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
 	addr := ":5000"
 
 	server, err := New(addr)
