@@ -57,8 +57,6 @@ func (s *Server) Close() {
 func main() {
 	addr := "109.165.187.47:5000"
 
-	addr = "localhost:"
-
 	server, err := New(addr)
 	if err != nil {
 		log.Println(err)
